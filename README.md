@@ -20,6 +20,7 @@ This project is a Python-based simulation of quantum circuits using Matrix Produ
 ## Project Structure
 The project follows a modular design pattern, with each aspect of the MPO simulation separated into its own module:
 MPO-Quantum-Circuit-Simulation/
+```
 ├── src/
 │   ├── __init__.py         # Combines all components into a cohesive MPO class
 │   ├── core.py             # Core implementation of the MPO class
@@ -31,7 +32,12 @@ MPO-Quantum-Circuit-Simulation/
 │   └── NoisyRCS.py         # Example usage of the MPO class
 ├── README.md               
 └── LICENSE                 
+```
 
 ## References
 
 Please refer to the [references.bib](references.bib) file.
+
+## License
+
+This project is licensed under the MIT License. See the [LICENSE](LICENSE) file for more details.
