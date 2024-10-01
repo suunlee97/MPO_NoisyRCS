@@ -7,7 +7,6 @@ This project is a Python-based simulation of quantum circuits using Matrix Produ
 - [Features](#features)
 - [Project Structure](#project-structure)
 - [References](#references)
-- [License](#license)
 
 ## Features
 
@@ -37,7 +36,3 @@ MPO-Quantum-Circuit-Simulation/
 ## References
 
 Please refer to the [references.bib](references.bib) file.
-
-## License
-
-This project is licensed under the MIT License. See the [LICENSE](LICENSE) file for more details.
