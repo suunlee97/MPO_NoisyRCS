@@ -222,7 +222,7 @@ class MPOObservables:
                 temp = np.tensordot(temp, np.diag(mpo1.Lambda), axes=([0], [0])) # temp[alpha,alpha'] Lambda[alpha,beta] = temp[alpha',beta]
                 temp = np.transpose(temp, (1, 0)) # temp[beta,alpha']
             if i == l2:
-                temp = np.tensordot(temp, np.diag(mpo1.Lambda), axes=([1], [0])) # temp[alpha,alpha'] Lambda[alpha',beta'] = temp[alpha,beta']
+                temp = np.tensordot(temp, np.diag(mpo2.Lambda), axes=([1], [0])) # temp[alpha,alpha'] Lambda[alpha',beta'] = temp[alpha,beta']
 
             # Reshape Gamma tensors for the current site
             A1_c = np.conjugate(mpo1.A[:, :, :, i+1]) # A1_c[alpha,I,beta]
