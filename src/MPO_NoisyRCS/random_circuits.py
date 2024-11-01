@@ -165,8 +165,19 @@ class MPORandom_circuits:
                         self.MPOsinglequbitUpdate(0, self.noise_combined())
                     elif self.OC != 0:
                         raise Exception('OC should be 0 or 1')
-        
+    def RCS1DOneCycleUpdate_no_unitary(self, t, only_left_half = False):
+        if not only_left_half:
+            if self.OC <= self.n // 2:
+                for l in range(self.n):
+                    self.MPOsinglequbitUpdate(l, self.noise_combined())
+            else:
+                for l in range(self.n)[::-1]:
+                    self.MPOsinglequbitUpdate(l, self.noise_combined())
+                    
         if only_left_half:
+            
+            raise Exception('Not implemented yet for only_left_half = True')
+
             n_qubits = self.n // 2
             if n_qubits == 2:
                 self.MPOtwoqubitUpdate(0, self.RandomTwoQubitGate())

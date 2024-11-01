@@ -4,7 +4,6 @@ from .initialization import MPOInitialization
 from .updates import MPOUpdates
 from .observables import MPOObservables
 from .random_circuits import MPORandom_circuits
-
 # Define the complete MPO class by using multiple inheritance
 class MPO(MPOCore, MPOInitialization, MPOUpdates, MPOObservables, MPORandom_circuits):
     """

@@ -245,3 +245,13 @@ class MPOObservables:
         rho2_term = MPOObservables.Inner_product(mpo2,mpo2).real
         cross_term = MPOObservables.Inner_product(mpo1,mpo2).real
         return np.sqrt(rho1_term+rho2_term-2*cross_term)
+    
+    @staticmethod
+    def TVD(mpo1,mpo2, exact = True):
+        """
+        Compute the total variance distance between two MPOs: ||rho_1-rho_2||_2.
+        """
+        if exact:
+            return np.linalg.norm(mpo1.getprobs() - mpo2.getprobs(),1)/2
+        else:
+            raise NotImplementedError("Only exact TVD is implemented.")
