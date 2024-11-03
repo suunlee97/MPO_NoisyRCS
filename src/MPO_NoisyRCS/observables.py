@@ -146,6 +146,10 @@ class MPOObservables:
         Parameters:
         x (int): The number of qudits defining the subsystem.
 
+        A: left n/2 - x qudits
+        B: middle 2x qudits
+        C: right n/2 - x qudits
+
         Returns:
         float: The computed CMI.
         """
@@ -155,6 +159,25 @@ class MPOObservables:
         purity_B = self.MarginalPurityFromMPO(range(qubitnum // 2 - x, qubitnum // 2 + x))
         purity_ABC = self.TotalPurityFromMPO()
         return - np.log2(purity_AB.real) - np.log2(purity_BC.real) + np.log2(purity_B.real) + np.log2(purity_ABC.real)
+    
+    def compute_MI(self, x):
+        """
+        Compute the Mutual Information (MI) from the MPO.
+
+        Parameters:
+        x (int): The number of qudits defining the subsystem.
+
+        A: left x qudits
+        B: right n - x qudits
+
+        Returns:
+        float: The computed MI.
+        """
+        qubitnum = self.n
+        purity_A = self.MarginalPurityFromMPO(range(x))
+        purity_B = self.MarginalPurityFromMPO(range(x, qubitnum))
+        purity_AB = self.TotalPurityFromMPO()
+        return - np.log2(purity_A.real) - np.log2(purity_B.real) + np.log2(purity_AB.real)
     
 
     def coll_prob(self):
