@@ -237,6 +237,60 @@ class MPOObservables:
         return temp[0, 0]
     
     @staticmethod
+    def Inner_product_prob(mpo1, mpo2):
+        """
+        Compute the inner product of two MPOs after complete dephasing: <rho_1,rho_2> = Tr(rho_1^{\dagger} rho_2).
+        """
+        # raise NotImplementedError("Inner product after complete dephasing needs to be debugged.")
+    
+        if mpo1.n != mpo2.n:
+            raise ValueError("The two MPOs must have the same number of qudits.")
+        if mpo1.d != mpo2.d:
+            raise ValueError("The two MPOs must have the same local dimension.")
+        if mpo1.chi != mpo2.chi:
+            raise ValueError("The two MPOs must have the same bond dimension.")
+        
+        n = mpo1.n
+        d = mpo1.d
+        chi = mpo1.chi
+        
+        l1 = mpo1.OC
+        l2 = mpo2.OC
+
+        diag_indices = d * np.arange(d) + np.arange(d)
+
+        # Initial tensor contraction for the first Gamma tensor
+        A1_c = np.conjugate(mpo1.A[0, :, :, 0])
+        A1_c = A1_c[diag_indices, :]
+
+        A2 = mpo2.A[0, :, :, 0]
+        A2 = A2[diag_indices, :]
+
+        temp = np.tensordot(A1_c, A2, axes=([0], [0])) # temp[alpha, alpha']
+
+        for i in range(n - 1):
+            if i == l1:
+                temp = np.tensordot(temp, np.diag(mpo1.Lambda), axes=([0], [0])) # temp[alpha,alpha'] Lambda[alpha,beta] = temp[alpha',beta]
+                temp = np.transpose(temp, (1, 0)) # temp[beta,alpha']
+            if i == l2:
+                temp = np.tensordot(temp, np.diag(mpo2.Lambda), axes=([1], [0])) # temp[alpha,alpha'] Lambda[alpha',beta'] = temp[alpha,beta']
+
+            # Reshape Gamma tensors for the current site
+            A1_c = np.conjugate(mpo1.A[:, :, :, i+1]) # A1_c[alpha,I,beta]
+            A1_c = A1_c[:, diag_indices, :]
+            
+            A2 = mpo2.A[:, :, :, i+1] # A2[alpha,I,beta]
+            A2 = A2[:, diag_indices, :]
+
+            temp = np.tensordot(
+                np.tensordot(temp, A1_c, axes=([0], [0])), # temp[alpha,alpha'] A1_c[alpha,I,beta] = temp[alpha',I,beta]
+                    A2,
+                    axes=([0, 1], [0, 1]) # temp[alpha',I,beta] A2[alpha',I,beta'] = temp[beta,beta']
+            )
+
+        return temp[0, 0]
+
+    @staticmethod
     def l2_distance(mpo1,mpo2):
         """
         Compute the l2 distance between two MPOs: ||rho_1-rho_2||_2.
@@ -247,9 +301,19 @@ class MPOObservables:
         return np.sqrt(rho1_term+rho2_term-2*cross_term)
     
     @staticmethod
+    def l2_distance_prob(mpo1, mpo2):
+        """
+        Compute the l2 distance between two output distributions of MPO: ||p_1-p_2||_1.
+        """
+        p1_term = MPOObservables.Inner_product_prob(mpo1, mpo1).real
+        p2_term = MPOObservables.Inner_product_prob(mpo2, mpo2).real
+        cross_term = MPOObservables.Inner_product_prob(mpo1, mpo2).real
+        return np.sqrt(p1_term + p2_term - 2 * cross_term)
+
+    @staticmethod
     def TVD(mpo1,mpo2, exact = True):
         """
-        Compute the total variance distance between two MPOs: ||rho_1-rho_2||_2.
+        Compute the total variance distance between two MPOs: ||p_1-p_2||_1.
         """
         if exact:
             return np.linalg.norm(mpo1.getprobs() - mpo2.getprobs(),1)/2

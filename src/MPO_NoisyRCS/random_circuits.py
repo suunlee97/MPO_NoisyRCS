@@ -201,11 +201,7 @@ class MPORandom_circuits:
                     elif self.OC != 0:
                         raise Exception('OC should be 0 or 1')
             return
-    
-    
-    def complete_dephasing(self):
-        temp = np.tensordot(self.A[:,:,:,:], np.diag(np.identity(self.d).flatten()), axes = ([1], [0])) # output: alpha, alpha, modes, I 
-        self.Gamma[:,:,:,:] = np.transpose(temp, (0, 3, 1, 2))
+
 
     def PrepareBellPairs(self): # need to be tested
         """
