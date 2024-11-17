@@ -21,6 +21,9 @@ def ColumnSumToOne(InputColumn):
 
 class MPOObservables:
     def getprobs(self):
+        """
+        Compute the output distribution from the MPO.
+        """
         l = self.OC
 
         if not self.d == 2:
@@ -30,11 +33,58 @@ class MPOObservables:
         for i in range(self.n - 1):
             if i == l:
                 temp = np.tensordot(temp, np.diag(self.Lambda), axes = (-1, 0))
-            temp = np.tensordot(temp, np.transpose(self.A[:, (0, 3), :, i + 1], (1, 0, 2)), axes = (-1, 0)) # this kind of indexing maps (0,3) to the first index and thus needs to be transposed
+            if i < self.n-2:
+                temp = np.tensordot(temp, np.transpose(self.A[:, (0, 3), :, i + 1], (1, 0, 2)), axes = (-1, 0)) # this kind of indexing maps (0,3) to the first index and thus needs to be transposed
+            else:
+                temp = np.tensordot(temp, self.A[:, (0, 3), 0, i + 1], axes = (-1, 0)) # strange! but this kind of indexing does *not* (0,3) to the first index and thus needs to be transposed
 
         probs = np.real(temp.reshape(-1))
 
         return probs
+
+    def getprobs_partial(self, chunk_index, num_output_bits):
+        """
+        Compute the output distribution from the MPO for a bitstrings with fixed first (n - num_output_bits) bits.
+        """
+        if not self.d == 2:
+            raise ValueError('getprobs is only defined for qubits')
+        if num_output_bits > self.n:
+            raise ValueError('num_output_bits must be less than or equal to the number of qubits in the MPO')
+        if chunk_index >= 2 ** (self.n - num_output_bits):
+            raise ValueError('chunk_index must be less than 2^(n-num_output_bits)')
+        
+        num_fixed_bits = self.n - num_output_bits
+        # fixed_bits = format(chunk_index, f'0{num_fixed_bits}b')
+        fixed_bits = format(chunk_index, f'0{num_fixed_bits}b')
+        fixed_bits_list = np.array([int(bit) for bit in fixed_bits])
+
+        l = self.OC
+
+        if fixed_bits_list[0] == 0:
+            temp = self.A[0, 0, :, 0]
+        else:
+            temp = self.A[0, 3, :, 0]
+        
+        for i in range(num_fixed_bits-1):
+            if i == l:
+                temp = np.tensordot(temp, np.diag(self.Lambda), axes = (-1, 0))
+            if fixed_bits_list[i + 1] == 0:
+                temp = np.tensordot(temp, self.A[:, 0, :, i + 1], axes = (-1, 0))
+            else:
+                temp = np.tensordot(temp, self.A[:, 3, :, i + 1], axes = (-1, 0))
+
+        for i in range(num_fixed_bits-1, self.n-1):
+            if i == l:
+                temp = np.tensordot(temp, np.diag(self.Lambda), axes = (-1, 0))
+            if i < self.n-2:
+                temp = np.tensordot(temp, np.transpose(self.A[:, (0, 3), :, i + 1], (1, 0, 2)), axes = (-1, 0)) # this kind of indexing maps (0,3) to the first index and thus needs to be transposed
+            else:
+                temp = np.tensordot(temp, self.A[:, (0, 3), 0, i + 1], axes = (-1, 0)) # strange! but this kind of indexing does *not* (0,3) to the first index and
+        
+        probs_partial = np.real(temp.reshape(-1))
+
+        return probs_partial
+
 
     def TotalProbFromMPO(self):
         """
@@ -165,20 +215,32 @@ class MPOObservables:
         Compute the Mutual Information (MI) from the MPO.
 
         Parameters:
-        x (int): The number of qudits defining the subsystem.
+        x (int): the index of the cut
 
-        A: left x qudits
-        B: right n - x qudits
+        A: left x+1 qudits
+        B: right n - x - 1 qudits
 
         Returns:
         float: The computed MI.
         """
         qubitnum = self.n
-        purity_A = self.MarginalPurityFromMPO(range(x))
-        purity_B = self.MarginalPurityFromMPO(range(x, qubitnum))
+        purity_A = self.MarginalPurityFromMPO(range(x+1))
+        purity_B = self.MarginalPurityFromMPO(range(x+1, qubitnum))
         purity_AB = self.TotalPurityFromMPO()
         return - np.log2(purity_A.real) - np.log2(purity_B.real) + np.log2(purity_AB.real)
     
+    def page_MI(self):
+        """
+        Compute the Page curve of Mutual Information (MI) from the MPO.
+
+        Returns:
+        array: .
+        """
+        n = self.n
+        Output = np.zeros(n-1)
+        for x in range(n-1):
+            Output[x] = self.compute_MI(x)
+        return Output
 
     def coll_prob(self):
         l = self.OC
@@ -318,6 +380,13 @@ class MPOObservables:
         """
         Compute the l2 distance between two MPOs: ||rho_1-rho_2||_2.
         """
+        if mpo1.n != mpo2.n:
+            raise ValueError("The two MPOs must have the same number of qudits.")
+        if mpo1.d != mpo2.d:
+            raise ValueError("The two MPOs must have the same local dimension.")
+        if mpo1.chi != mpo2.chi:
+            raise ValueError("The two MPOs must have the same bond dimension.")
+
         rho1_term = MPOObservables.Inner_product(mpo1,mpo1).real
         rho2_term = MPOObservables.Inner_product(mpo2,mpo2).real
         cross_term = MPOObservables.Inner_product(mpo1,mpo2).real
@@ -328,17 +397,40 @@ class MPOObservables:
         """
         Compute the l2 distance between two output distributions of MPO: ||p_1-p_2||_1.
         """
+        if mpo1.n != mpo2.n:
+            raise ValueError("The two MPOs must have the same number of qudits.")
+        if mpo1.d != mpo2.d:
+            raise ValueError("The two MPOs must have the same local dimension.")
+        if mpo1.chi != mpo2.chi:
+            raise ValueError("The two MPOs must have the same bond dimension.")
+
         p1_term = MPOObservables.Inner_product_prob(mpo1, mpo1).real
         p2_term = MPOObservables.Inner_product_prob(mpo2, mpo2).real
         cross_term = MPOObservables.Inner_product_prob(mpo1, mpo2).real
         return np.sqrt(p1_term + p2_term - 2 * cross_term)
 
     @staticmethod
-    def TVD(mpo1,mpo2, exact = True):
+    def TVD(mpo1,mpo2, bit_length = 0):
         """
         Compute the total variance distance between two MPOs: ||p_1-p_2||_1.
+        If bit_length == 0, 
+        Otherwise, it calculates TVD piece by piece with the bits of bit_length.
         """
-        if exact:
+        if mpo1.n != mpo2.n:
+            raise ValueError("The two MPOs must have the same number of qudits.")
+        if mpo1.d != mpo2.d:
+            raise ValueError("The two MPOs must have the same local dimension.")
+        if mpo1.chi != mpo2.chi:
+            raise ValueError("The two MPOs must have the same bond dimension.")
+        
+        # if bit_length > mpo1.n:
+        #     raise ValueError("The bit_length must be less than or equal to the number of qubits in the MPO.")
+
+        if bit_length == 0 or bit_length >= mpo1.n:
             return np.linalg.norm(mpo1.getprobs() - mpo2.getprobs(),1)/2
         else:
-            raise NotImplementedError("Only exact TVD is implemented.")
+            tvd = 0
+            fixed_bits = range(2 ** (mpo1.n - bit_length))
+            for fixed_bit in fixed_bits:
+                tvd += np.linalg.norm(mpo1.getprobs_partial(fixed_bit, bit_length) - mpo2.getprobs_partial(fixed_bit, bit_length),1)/2
+            return tvd
